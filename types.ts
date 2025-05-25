@@ -1,16 +1,7 @@
+// ShoppingItem interface removed as it's TypeScript-specific.
+// The structure will be implicitly defined by its usage in App.js.
 
-export interface ShoppingItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number; // Unit price for this shopping trip
-  barcode?: string;
-  lastPurchasePrice?: number; // Price at current supermarket last time
-  bestOverallPrice?: { price: number; supermarket: string };
-}
-
-export enum AppPhase {
-  BUDGET_SETUP,
-  SHOPPING,
-}
-    
+export const AppPhase = {
+  BUDGET_SETUP: 0,
+  SHOPPING: 1,
+};

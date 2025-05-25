@@ -1,4 +1,3 @@
-
 export const APP_TITLE = "Minhas Compras Inteligentes";
 export const DEFAULT_SUPERMARKET = "Mercado Padrão";
 

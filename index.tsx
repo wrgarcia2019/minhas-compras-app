@@ -1,7 +1,6 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App'; // Changed from '@/App'
+import App from './App.js'; // Changed from ./App and .tsx to .js
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

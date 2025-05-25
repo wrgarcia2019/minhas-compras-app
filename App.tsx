@@ -1,67 +1,50 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { APP_TITLE, DEFAULT_SUPERMARKET, LOCAL_STORAGE_KEYS } from './constants';
-import { ShoppingItem, AppPhase } from './types';
-import PlusIcon from './components/icons/PlusIcon';
-import TrashIcon from './components/icons/TrashIcon';
-import ArrowRightCircleIcon from './components/icons/ArrowRightCircleIcon';
-import ArrowLeftCircleIcon from './components/icons/ArrowLeftCircleIcon';
+import { APP_TITLE, DEFAULT_SUPERMARKET, LOCAL_STORAGE_KEYS } from './constants.js';
+import { AppPhase } from './types.js';
+import PlusIcon from './components/icons/PlusIcon.js';
+import TrashIcon from './components/icons/TrashIcon.js';
+import ArrowRightCircleIcon from './components/icons/ArrowRightCircleIcon.js';
+import ArrowLeftCircleIcon from './components/icons/ArrowLeftCircleIcon.js';
 
-// Updated global declaration for window.Recharts for better type safety
-declare global {
-  interface Window {
-    Recharts: {
-      PieChart: React.ComponentType<any>;
-      Pie: React.ComponentType<any>;
-      Cell: React.ComponentType<any>;
-      Tooltip: React.ComponentType<any>;
-      Legend: React.ComponentType<any>;
-      ResponsiveContainer: React.ComponentType<any>;
-    };
-  }
-}
+// Removed global declaration for window.Recharts
 
-interface PriceHistory {
-  [supermarket: string]: {
-    [itemName: string]: number; // Stores the price of the item
-  };
-}
+// Removed PriceHistory interface
+// Removed RechartsLoadStatus type alias
 
-type RechartsLoadStatus = 'loading' | 'loaded' | 'failed';
-
-const App: React.FC = () => {
-  const [RechartsAPI, setRechartsAPI] = useState<typeof window.Recharts | null>(null);
-  const [rechartsLoadStatus, setRechartsLoadStatus] = useState<RechartsLoadStatus>('loading');
+const App = () => {
+  const [RechartsAPI, setRechartsAPI] = useState<any>(null); // Keep type for RechartsAPI if possible, or use any
+  const [rechartsLoadStatus, setRechartsLoadStatus] = useState<'loading' | 'loaded' | 'failed'>('loading');
 
   // Load initial state from localStorage or use defaults
-  const [currentPhase, setCurrentPhase] = useState<AppPhase>(() => {
+  const [currentPhase, setCurrentPhase] = useState(() => {
     const savedPhase = localStorage.getItem(LOCAL_STORAGE_KEYS.APP_PHASE);
-    return savedPhase ? (JSON.parse(savedPhase) as AppPhase) : AppPhase.BUDGET_SETUP;
+    return savedPhase ? JSON.parse(savedPhase) : AppPhase.BUDGET_SETUP;
   });
-  const [supermarket, setSupermarket] = useState<string>(() => {
+  const [supermarket, setSupermarket] = useState(() => {
     return localStorage.getItem(LOCAL_STORAGE_KEYS.SUPERMARKET) || DEFAULT_SUPERMARKET;
   });
   const [budget, setBudget] = useState<number | null>(() => {
     const savedBudget = localStorage.getItem(LOCAL_STORAGE_KEYS.BUDGET);
     return savedBudget ? parseFloat(savedBudget) : null;
   });
-  const [newItemName, setNewItemName] = useState<string>('');
-  const [newItemQuantity, setNewItemQuantity] = useState<number>(1);
-  const [newItemPrice, setNewItemPrice] = useState<number>(0);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [newItemPrice, setNewItemPrice] = useState(0);
 
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>(() => {
+  const [shoppingList, setShoppingList] = useState<any[]>(() => { // Consider a more specific type if possible
     const savedList = localStorage.getItem(LOCAL_STORAGE_KEYS.SHOPPING_LIST);
     return savedList ? JSON.parse(savedList) : [];
   });
-  const [cart, setCart] = useState<ShoppingItem[]>(() => {
+  const [cart, setCart] = useState<any[]>(() => { // Consider a more specific type if possible
     const savedCart = localStorage.getItem(LOCAL_STORAGE_KEYS.CART);
     return savedCart ? JSON.parse(savedCart) : [];
   });
-  const [priceHistory, setPriceHistory] = useState<PriceHistory>(() => {
+  const [priceHistory, setPriceHistory] = useState<Record<string, Record<string, number>>>(() => {
     const savedHistory = localStorage.getItem(LOCAL_STORAGE_KEYS.PRICE_HISTORY);
     return savedHistory ? JSON.parse(savedHistory) : {};
   });
-  const [purchaseFinalizedMessage, setPurchaseFinalizedMessage] = useState<string>('');
+  const [purchaseFinalizedMessage, setPurchaseFinalizedMessage] = useState('');
 
 
   // Effect for loading Recharts
@@ -72,8 +55,10 @@ const App: React.FC = () => {
     const intervalTime = 100;
 
     const intervalId = setInterval(() => {
-      if (window.Recharts && window.Recharts.PieChart) {
-        setRechartsAPI(window.Recharts);
+      // Fix: Cast window to any to access dynamically loaded Recharts
+      if ((window as any).Recharts && (window as any).Recharts.PieChart) {
+        // Fix: Cast window to any to access dynamically loaded Recharts
+        setRechartsAPI((window as any).Recharts);
         setRechartsLoadStatus('loaded');
         clearInterval(intervalId);
       } else {
@@ -127,8 +112,12 @@ const App: React.FC = () => {
     }
   };
 
-  const getPriceInsights = useCallback((itemName: string, currentSupermarket: string): Pick<ShoppingItem, 'lastPurchasePrice' | 'bestOverallPrice'> => {
-    const insights: Pick<ShoppingItem, 'lastPurchasePrice' | 'bestOverallPrice'> = {};
+  const getPriceInsights = useCallback((itemName: string, currentSupermarket: string) => {
+    // Fix: Explicitly type the insights object to ensure properties are recognized downstream.
+    const insights: {
+      lastPurchasePrice?: number;
+      bestOverallPrice?: { price: number; supermarket: string; };
+    } = {};
     const normalizedItemName = itemName.toLowerCase().trim();
 
     if (priceHistory[currentSupermarket] && priceHistory[currentSupermarket][normalizedItemName] !== undefined) {
@@ -136,23 +125,23 @@ const App: React.FC = () => {
     }
 
     let bestPrice: number | undefined = undefined;
-    let bestSupermarket: string | undefined = undefined;
+    let bestSupermarketName: string | undefined = undefined; 
 
     for (const market in priceHistory) {
       if (priceHistory[market][normalizedItemName] !== undefined) {
         const currentMarketPrice = priceHistory[market][normalizedItemName];
         if (bestPrice === undefined || currentMarketPrice < bestPrice) {
           bestPrice = currentMarketPrice;
-          bestSupermarket = market;
+          bestSupermarketName = market;
         }
       }
     }
 
-    if (bestPrice !== undefined && bestSupermarket !== undefined) {
-      insights.bestOverallPrice = { price: bestPrice, supermarket: bestSupermarket };
+    if (bestPrice !== undefined && bestSupermarketName !== undefined) {
+      insights.bestOverallPrice = { price: bestPrice, supermarket: bestSupermarketName };
     }
     return insights;
-  }, [priceHistory]);
+  }, [priceHistory, supermarket]); 
 
   const handleAddItemToList = () => {
     if (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice < 0) {
@@ -162,7 +151,7 @@ const App: React.FC = () => {
     const trimmedItemName = newItemName.trim();
     const priceInsights = getPriceInsights(trimmedItemName, supermarket);
 
-    const newItem: ShoppingItem = {
+    const newItem = {
       id: crypto.randomUUID(),
       name: trimmedItemName,
       quantity: newItemQuantity,
@@ -194,13 +183,13 @@ const App: React.FC = () => {
     }));
   };
 
-  const moveToCart = (item: ShoppingItem) => {
+  const moveToCart = (item: any) => { // Consider a more specific type for item
     setCart(prev => [...prev, item]);
     removeItemFromList(item.id);
     recordPriceHistory(item.name, item.price, supermarket);
   };
 
-  const moveToList = (item: ShoppingItem) => {
+  const moveToList = (item: any) => { // Consider a more specific type for item
     const priceInsights = getPriceInsights(item.name, supermarket);
     const itemWithUpdatedInsights = { ...item, ...priceInsights };
     setShoppingList(prev => [...prev, itemWithUpdatedInsights]);
@@ -236,7 +225,6 @@ const App: React.FC = () => {
         };
         if (newPrice !== undefined) {
           recordPriceHistory(updatedItem.name, updatedItem.price, supermarket);
-           // For cart items, insights are mostly for context if moved back, but less critical here
         }
         return updatedItem;
       }
@@ -263,7 +251,7 @@ const App: React.FC = () => {
     setPurchaseFinalizedMessage('');
   };
 
-  const calculateTotal = useCallback((items: ShoppingItem[]) => {
+  const calculateTotal = useCallback((items: any[]) => { // Consider a more specific type for items
     return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   }, []);
 
@@ -273,7 +261,7 @@ const App: React.FC = () => {
 
   const budgetPieData = budget !== null ? [
     { name: 'Gasto (Carrinho)', value: cartTotal, fill: '#ef4444' }, // red-500
-    { name: 'Restante Orçamento', value: Math.max(0, remainingBudget!), fill: '#22c55e' } // green-500
+    { name: 'Restante Orçamento', value: Math.max(0, remainingBudget ?? 0), fill: '#22c55e' } // green-500
   ] : [];
   
   const shoppingListPieData = budget !== null ? [
@@ -281,13 +269,13 @@ const App: React.FC = () => {
       { name: 'Saldo p/ Lista', value: Math.max(0, budget - shoppingListTotal), fill: '#6b7280' } // gray-500
   ] : [];
 
-  const renderPriceInsight = (item: ShoppingItem) => {
+  const renderPriceInsight = (item: any) => { // Consider a more specific type for item
     const insights = [];
     const currentItemPrice = item.price;
 
     if (item.lastPurchasePrice !== undefined) {
         let comparisonText = "";
-        let textColor = "text-yellow-400"; // Default for neutral or last price
+        let textColor = "text-yellow-400"; 
         if (currentItemPrice > item.lastPurchasePrice) {
             comparisonText = ` (Atual: +R$${(currentItemPrice - item.lastPurchasePrice).toFixed(2)})`;
             textColor = "text-red-400";
@@ -315,11 +303,10 @@ const App: React.FC = () => {
             comparisonHighlight = " ⭐ Preço atual é o melhor!";
             textColor = "text-emerald-400";
         } else if (currentItemPrice < item.bestOverallPrice.price) {
-            comparisonHighlight = " 🎉 Novo melhor preço!"; // This item is now the new best
+            comparisonHighlight = " 🎉 Novo melhor preço!"; 
              textColor = "text-amber-400";
         } else if (currentItemPrice > item.bestOverallPrice.price) {
              comparisonHighlight = ` (Atual: +R$${(currentItemPrice - item.bestOverallPrice.price).toFixed(2)})`;
-             // textColor remains sky for "other market" or slightly less prominent if current market
         }
         
         insights.push(
@@ -433,7 +420,7 @@ const App: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-200 mb-2">Visão Geral do Orçamento (Lista)</h3>
                 <RechartsAPI.ResponsiveContainer width="100%" height={200}>
                   <RechartsAPI.PieChart>
-                    <RechartsAPI.Pie data={shoppingListPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <RechartsAPI.Pie data={shoppingListPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} labelLine={false} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
                        {shoppingListPieData.map((entry, index) => (
                           <RechartsAPI.Cell key={`cell-list-${index}`} fill={entry.fill} />
                         ))}
@@ -505,8 +492,8 @@ const App: React.FC = () => {
            <div className="flex justify-between items-center mb-1">
             <p className="text-gray-300">Total no Carrinho: <span className="font-bold text-xl text-emerald-300">R${cartTotal.toFixed(2)}</span></p>
             {budget !== null && (
-              <p className={`text-sm font-semibold ${remainingBudget! < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                Orçamento: R${budget.toFixed(2)} | Restante: R${remainingBudget!.toFixed(2)}
+              <p className={`text-sm font-semibold ${remainingBudget && remainingBudget < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                Orçamento: R${budget.toFixed(2)} | Restante: R${remainingBudget?.toFixed(2)}
               </p>
             )}
           </div>
@@ -519,7 +506,7 @@ const App: React.FC = () => {
                 <div className="mb-4">
                 <RechartsAPI.ResponsiveContainer width="100%" height={200}>
                     <RechartsAPI.PieChart>
-                    <RechartsAPI.Pie data={budgetPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <RechartsAPI.Pie data={budgetPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} labelLine={false} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {budgetPieData.map((entry, index) => (
                             <RechartsAPI.Cell key={`cell-cart-${index}`} fill={entry.fill} />
                         ))}
