@@ -1,0 +1,6 @@
+
+{
+  "name": "Minhas Compras Inteligentes",
+  "description": "Um assistente de compras moderno para ajudar você a planejar suas compras, controlar gastos em relação a um orçamento e comparar preços. Gerencie sua lista de compras e carrinho eficientemente com informações de preços.",
+  "requestFramePermissions": ["camera"]
+}
